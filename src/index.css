@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Gaming Challenge App Design System - Dark Cyberpunk Theme */
+
+@layer base {
+  :root {
+    /* Light Gaming Background */
+    --background: 0 0% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* Gaming Cards with Glass Effect */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    /* Popover/Modal Light */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Orange-Red Primary */
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light Secondary */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+
+    /* Muted Light Areas */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Orange Accent */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Red Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Success Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning Orange */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders with subtle glow */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 16 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Gaming Gradients */
+    --gradient-gaming: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ff6b35 100%);
+    --gradient-dark: linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%);
+    --gradient-glow: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(247, 147, 30, 0.1) 100%);
+
+    /* Neon Shadows */
+    --shadow-neon-purple: 0 0 20px rgba(255, 107, 53, 0.3);
+    --shadow-neon-cyan: 0 0 20px rgba(247, 147, 30, 0.3);
+    --shadow-neon-green: 0 0 20px rgba(142, 76, 36, 0.3);
+    --shadow-neon-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+    /* Gaming Animations */
+    --transition-glow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    /* Dark Gaming Background */
+    --background: 220 13% 7%;
+    --foreground: 210 40% 98%;
+
+    /* Gaming Cards with Glass Effect */
+    --card: 220 13% 9%;
+    --card-foreground: 210 40% 98%;
+
+    /* Popover/Modal Dark */
+    --popover: 220 13% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Orange-Red Primary */
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Dark Secondary */
+    --secondary: 220 13% 15%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted Dark Areas */
+    --muted: 220 13% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Orange Accent */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Red Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Success Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning Orange */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders with subtle glow */
+    --border: 220 13% 20%;
+    --input: 220 13% 15%;
+    --ring: 16 100% 50%;
+
+    /* Gaming Gradients */
+    --gradient-gaming: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ff6b35 100%);
+    --gradient-dark: linear-gradient(135deg, hsl(220 13% 9%), hsl(220 13% 12%));
+    --gradient-glow: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(247, 147, 30, 0.1) 100%);
+
+    /* Neon Shadows */
+    --shadow-neon-purple: 0 0 20px rgba(255, 107, 53, 0.3);
+    --shadow-neon-cyan: 0 0 20px rgba(247, 147, 30, 0.3);
+    --shadow-neon-green: 0 0 20px rgba(142, 76, 36, 0.3);
+    --shadow-neon-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+    --shadow-glass: 0 8px 32px hsl(220 13% 7% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
