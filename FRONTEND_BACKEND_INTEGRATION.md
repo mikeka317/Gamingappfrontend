@@ -33,7 +33,7 @@ VITE_API_URL=http://localhost:5072/api
 ```
 
 ### 2. Backend Setup
-Make sure your backend is running on `http://localhost:5072` (or update the API URL accordingly).
+Make sure your backend is running on `http://localhost:<PORT>` (or update the API URL accordingly).
 
 ### 3. Test the Integration
 

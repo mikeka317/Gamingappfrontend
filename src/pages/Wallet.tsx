@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { useAuth } from '../contexts/AuthContext';
-import { walletService, Wallet, Transaction, Dispute } from '../services/walletService';
+import { walletService } from '../services/walletService';
+import type { Wallet as WalletModel, Transaction, Dispute } from '../services/walletService';
 import { toast } from '../hooks/use-toast';
 import { 
   Wallet as WalletIcon, 
@@ -28,7 +29,7 @@ import {
 
 const Wallet: React.FC = () => {
   const { user } = useAuth();
-  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [wallet, setWallet] = useState<WalletModel | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);

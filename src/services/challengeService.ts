@@ -1,6 +1,6 @@
 import { User } from '../types/user';
+import { API_BASE_URL  } from '@/services/api';
 
-const API_BASE_URL = 'http://localhost:5072/api';
 
 export interface Challenge {
   id: string;
@@ -40,6 +40,9 @@ export interface Challenge {
   verificationStatus: 'pending' | 'approved' | 'rejected' | 'disputed';
   verificationNotes: string;
   type: 'outgoing' | 'incoming';
+  // Optional fields added by client for disputes handling
+  disputed?: boolean;
+  disputeResolved?: boolean;
 }
 
 export interface CreateChallengeRequest {

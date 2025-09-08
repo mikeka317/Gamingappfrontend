@@ -36,6 +36,7 @@ import { ChallengeDetailsModal } from '@/components/ui/challenge-details-modal';
 import { ProofUploadModal } from '@/components/ui/proof-upload-modal';
 import { ChallengeAcceptanceModal } from '@/components/ui/challenge-acceptance-modal';
 import { Challenge } from '@/services/challengeService';
+import { API_BASE_URL } from '@/services/api';
 
 export default function ChallengesForMe() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -276,7 +277,7 @@ export default function ChallengesForMe() {
     formData.append('opponentUsername', opponentUsername);
     formData.append('disputeReason', reason);
     const token = localStorage.getItem('authToken') || '';
-    const res = await fetch('http://localhost:5072/api/wallet/dispute', {
+    const res = await fetch(`${API_BASE_URL}/wallet/dispute`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData
@@ -298,8 +299,9 @@ export default function ChallengesForMe() {
       
       // Determine opponent information
       const isChallenger = selectedDisputeChallenge.challenger?.uid === user?.uid;
-      const opponentId = isChallenger 
-        ? selectedDisputeChallenge.opponents?.[0]?.uid 
+      // Opponents do not have uid in the type; let backend infer when you're the challenger
+      const opponentId = isChallenger
+        ? undefined
         : selectedDisputeChallenge.challenger?.uid;
       const opponentUsername = isChallenger 
         ? selectedDisputeChallenge.opponents?.[0]?.username 
@@ -313,7 +315,7 @@ export default function ChallengesForMe() {
       const proofImageUrls = await uploadDisputeImages(
         disputeProofImages,
         selectedDisputeChallenge.id,
-        opponentId,
+        opponentId || '',
         opponentUsername,
         disputeReason
       );
@@ -323,7 +325,7 @@ export default function ChallengesForMe() {
       if (!proofImageUrls || !proofImageUrls.length) {
         await walletService.createDispute(
           selectedDisputeChallenge.id,
-          opponentId,
+          opponentId || '',
           opponentUsername,
           disputeReason,
           []

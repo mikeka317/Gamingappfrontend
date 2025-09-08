@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiService, User, LoginRequest, RegisterRequest } from '@/services/api';
+import { apiService, LoginRequest, RegisterRequest } from '@/services/api';
+import { User } from '@/types/user';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebaseClient';
+import {API_BASE_URL} from '@/services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -118,7 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Call backend logout endpoint to update lastActive timestamp
       const authToken = localStorage.getItem('authToken');
       if (authToken) {
-        await fetch('http://localhost:5072/api/auth/logout', {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

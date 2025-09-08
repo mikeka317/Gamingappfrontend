@@ -22,6 +22,7 @@ import { Challenge } from '@/services/challengeService';
 import { walletService } from '@/services/walletService';
 import { useAuth } from '@/contexts/AuthContext';
 import { aiVerificationService } from '@/services/aiVerificationService';
+import { API_BASE_URL } from '@/services/api';
 
 interface ProofUploadModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
 
   const markChallengeAsCompleted = async (challengeId: string, aiResult: any) => {
     try {
-      const response = await fetch(`http://localhost:5072/api/challenges/${challengeId}/complete`, {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

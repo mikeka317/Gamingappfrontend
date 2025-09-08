@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_BASE_URL } from '@/services/api';
 
 interface Transaction {
   id: string;
@@ -70,8 +71,8 @@ export default function Transactions() {
     
     try {
       setLoading(true);
-      
-      const response = await fetch(`http://localhost:5072/api/wallet/transactions?limit=100`, {
+     
+      const response = await fetch(`${API_BASE_URL}/wallet/transactions?limit=100`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -129,7 +130,7 @@ export default function Transactions() {
     if (!authToken) return;
     
     try {
-      const response = await fetch(`http://localhost:5072/api/wallet/balance`, {
+      const response = await fetch(`${API_BASE_URL}/wallet/balance`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -160,7 +161,7 @@ export default function Transactions() {
     if (!authToken) return;
     
     try {
-      const response = await fetch(`http://localhost:5072/api/wallet/stats`, {
+      const response = await fetch(`${API_BASE_URL}/wallet/stats`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'

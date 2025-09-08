@@ -37,6 +37,7 @@ import { NewChallengeModal } from '@/components/ui/new-challenge-modal';
 import { Challenge } from '@/services/challengeService';
 import { useToast } from '@/hooks/use-toast';
 import { ProofUploadModal } from '@/components/ui/proof-upload-modal';
+import { API_BASE_URL } from '@/services/api';
 
 export default function MyChallenges() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -238,7 +239,7 @@ export default function MyChallenges() {
     formData.append('opponentUsername', opponentUsername);
     formData.append('disputeReason', reason);
     const token = localStorage.getItem('authToken') || '';
-    const res = await fetch('http://localhost:5072/api/wallet/dispute', {
+    const res = await fetch(`${API_BASE_URL}/wallet/dispute`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData

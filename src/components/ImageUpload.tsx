@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '../hooks/use-toast';
 import { Upload, Camera, X } from 'lucide-react';
+import { API_BASE_URL } from '@/services/api';
 
 interface ImageUploadProps {
   onImageUploaded: (imageUrl: string) => void;
@@ -104,7 +105,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       }
 
       console.log('🌐 Making upload request to backend...');
-      const response = await fetch('http://localhost:5072/api/upload/profile-image', {
+      const response = await fetch(`${API_BASE_URL}/upload/profile-image`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

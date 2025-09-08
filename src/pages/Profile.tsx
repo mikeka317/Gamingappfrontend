@@ -33,6 +33,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 import { firebaseAuth } from '@/lib/firebaseClient';
 import { apiService } from '@/services/api';
 import ImageUpload from '@/components/ImageUpload';
+import { API_BASE_URL } from '@/services/api';
 
 interface UserProfile {
   id: string;
@@ -177,7 +178,7 @@ export default function Profile() {
   const fetchTransactionStats = async () => {
     if (user) {
       try {
-        const response = await fetch(`http://localhost:5072/api/wallet/stats`, {
+        const response = await fetch(`${API_BASE_URL}/wallet/stats`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
@@ -278,8 +279,8 @@ export default function Profile() {
             transaction: userTransactions[0],
             createdAt: userTransactions[0].createdAt,
             createdAtType: typeof userTransactions[0].createdAt,
-            hasToDate: !!userTransactions[0].createdAt?.toDate,
-            hasSeconds: !!userTransactions[0].createdAt?._seconds
+            hasToDate: !!(userTransactions[0] as any)?.createdAt?.toDate,
+            hasSeconds: !!(userTransactions[0] as any)?.createdAt?._seconds
           });
         }
         
@@ -400,7 +401,7 @@ export default function Profile() {
         country: user.country || '',
         bio: user.bio || '',
         avatar: user.profilePicture || null,
-        joinDate: user.createdAt,
+        joinDate: typeof user.createdAt === 'number' ? new Date(user.createdAt).toISOString() : (user.createdAt as string),
         gaming: {
           preferredGames: Array.isArray((user as any)?.gaming?.preferredGames) ? (user as any).gaming.preferredGames : [],
           skillLevel: ((user as any)?.gaming?.skillLevel || 'beginner') as any,
@@ -513,7 +514,7 @@ export default function Profile() {
         // Attempt to verify/capture and credit wallet
         (async () => {
           try {
-            const response = await fetch(`http://localhost:5072/api/wallet/paypal/verify-payment`, {
+            const response = await fetch(`${API_BASE_URL}/wallet/paypal/verify-payment`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -606,12 +607,7 @@ export default function Profile() {
         country: profile.country,
         bio: profile.bio,
         username: profile.username,
-        profilePicture: profile.avatar || undefined,
-        gaming: {
-          preferredGames: profile.gaming.preferredGames,
-          skillLevel: profile.gaming.skillLevel,
-          playStyle: profile.gaming.playStyle,
-        }
+        profilePicture: profile.avatar || undefined
       });
 
       setIsEditing(false);
@@ -897,7 +893,7 @@ export default function Profile() {
                             country: user.country || '',
                             bio: user.bio || '',
                             avatar: user.profilePicture || null,
-                            joinDate: user.createdAt,
+                            joinDate: typeof user.createdAt === 'number' ? new Date(user.createdAt).toISOString() : (user.createdAt as string),
                             gaming: {
                               preferredGames: [],
                               skillLevel: 'beginner',
@@ -1254,7 +1250,7 @@ export default function Profile() {
                               if (paypalAmount && parseFloat(paypalAmount) > 0) {
                                 try {
                                   // Use the new PayPal deposit endpoint
-                                  const response = await fetch(`http://localhost:5072/api/wallet/paypal-deposit`, {
+                                  const response = await fetch(`${API_BASE_URL}/wallet/paypal-deposit`, {
                                     method: 'POST',
                                     headers: {
                                       'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1490,7 +1486,7 @@ export default function Profile() {
                             onClick={async () => {
                               // TEMP: On click, fetch PayPal platform balance and show in alert
                               try {
-                                const resp = await fetch(`http://localhost:5072/api/wallet/paypal/balance?fullRange=true`, {
+                                const resp = await fetch(`${API_BASE_URL}/wallet/paypal/balance?fullRange=true`, {
                                   method: 'GET',
                                   headers: {
                                     'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1541,7 +1537,7 @@ export default function Profile() {
                               
                               try {
                                 // Use the new withdrawal endpoint
-                                const response = await fetch(`http://localhost:5072/api/wallet/withdraw`, {
+                                const response = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
                                   method: 'POST',
                                   headers: {
                                     'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
