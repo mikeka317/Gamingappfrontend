@@ -8,7 +8,9 @@ export default defineConfig(({ command, mode }) => ({
     host: "::",
     port: 8080,
     allowedHosts: [
-      "gamingappfrontend-2.onrender.com", // 👈 add your Render host here
+      "gamingappfrontend.onrender.com", // 👈 add your Render host here
+      "gamingappfrontend-2.onrender.com",
+      "https://gamingappfrontend.onrender.com"
     ],
   },
   build: {
