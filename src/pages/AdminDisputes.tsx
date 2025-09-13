@@ -61,6 +61,7 @@ export default function AdminDisputes() {
   const [resolution, setResolution] = useState<AdminResolutionUI>('keep-winner');
   const [challengeWinner, setChallengeWinner] = useState<'challenger' | 'opponent' | null>(null);
   const [isResolving, setIsResolving] = useState(false);
+  const [challengeProofImages, setChallengeProofImages] = useState<string[]>([]);
 
   // Check if user is admin (you can implement your own admin check logic)
   const isAdmin = (user as any)?.isAdmin || user?.role === 'admin' || (user?.username || '').toLowerCase() === 'admin';
@@ -118,6 +119,17 @@ export default function AdminDisputes() {
         else if (winnerUsername === dispute.opponentUsername) setChallengeWinner('opponent');
         else setChallengeWinner(null);
       } else setChallengeWinner(null);
+
+      // Collect challenge proof images from challenge data
+      const data = resp?.data || {};
+      const urls: string[] = [];
+      if (Array.isArray(data.proofImages)) {
+        urls.push(...(data.proofImages as string[]).filter(Boolean));
+      }
+      const aiProofUrl = data?.aiResult?.proofImageUrl as string | undefined;
+      if (aiProofUrl) urls.push(aiProofUrl);
+      // Deduplicate
+      setChallengeProofImages(Array.from(new Set(urls)));
     } catch (_) {}
     setIsDisputeModalOpen(true);
   };
@@ -127,6 +139,7 @@ export default function AdminDisputes() {
     setSelectedDispute(null);
     setAdminNotes('');
     setResolution('keep-winner');
+    setChallengeProofImages([]);
   };
 
   const handleResolveDispute = async () => {
@@ -354,6 +367,27 @@ export default function AdminDisputes() {
                   {selectedDispute.reason}
                 </p>
               </div>
+
+              {challengeProofImages.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Challenge Proof</h4>
+                  <div className="space-y-2">
+                    {challengeProofImages.map((url, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        {/(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i.test(url) && (
+                          <img src={url} alt={`challenge-proof-${idx}`} className="h-24 w-auto rounded border" />
+                        )}
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">
+                          View
+                        </a>
+                        <a href={url} download className="text-xs underline">
+                          Download
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {selectedDispute.evidence && (
                 <div>
