@@ -27,7 +27,9 @@ import {
   Upload,
   Calendar,
   Trophy,
-  Flag
+  Flag,
+  Play,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { challengeService } from '../services/challengeService';
@@ -36,7 +38,10 @@ import { ChallengeDetailsModal } from '@/components/ui/challenge-details-modal';
 import { NewChallengeModal } from '@/components/ui/new-challenge-modal';
 import { Challenge } from '@/services/challengeService';
 import { useToast } from '@/hooks/use-toast';
-import { ProofUploadModal } from '@/components/ui/proof-upload-modal';
+import { ScorecardModal } from '@/components/ui/scorecard-modal';
+import { AIVerificationModal } from '@/components/ui/ai-verification-modal';
+import { ScorecardTimer } from '@/components/ui/scorecard-timer';
+import { AiVerificationTimer } from '@/components/ui/ai-verification-timer';
 import { API_BASE_URL } from '@/services/api';
 
 export default function MyChallenges() {
@@ -52,8 +57,12 @@ export default function MyChallenges() {
   // New challenge modal state
   const [isNewChallengeModalOpen, setIsNewChallengeModalOpen] = useState(false);
   
-  // Proof upload modal state
-  const [isProofUploadModalOpen, setIsProofUploadModalOpen] = useState(false);
+  // Scorecard modal state
+  const [isScorecardModalOpen, setIsScorecardModalOpen] = useState(false);
+
+  // AI verification modal state
+  const [isAIVerificationModalOpen, setIsAIVerificationModalOpen] = useState(false);
+  const [selectedAIVerificationChallenge, setSelectedAIVerificationChallenge] = useState<Challenge | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -69,6 +78,43 @@ export default function MyChallenges() {
   const [disputeProofImages, setDisputeProofImages] = useState<File[]>([]);
   const disputeFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch challenges function
+  const fetchChallenges = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedChallenges = await challengeService.getMyChallenges();
+      // Augment with dispute status
+      const challengesWithDisputes = await Promise.all(
+        fetchedChallenges.map(async (challenge) => {
+          try {
+            const existingDispute = await walletService.hasActiveDispute(challenge.id);
+            return { ...challenge, disputed: existingDispute } as any;
+          } catch (e) {
+            return { ...challenge, disputed: false } as any;
+          }
+        })
+      );
+      setChallenges(challengesWithDisputes);
+      setFilteredChallenges(challengesWithDisputes);
+      
+      // Debug: Log challenge statuses and winners
+      challengesWithDisputes.forEach((challenge, index) => {
+        console.log(`🔍 MyChallenges Challenge ${index + 1}: ID=${challenge.id}, Status=${challenge.status}`);
+        console.log(`🔍 MyChallenges Challenge ${index + 1} Winner:`, challenge.winner);
+        console.log(`🔍 MyChallenges Challenge ${index + 1} Winner Check:`, didCurrentUserWin(challenge));
+      });
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch challenges. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch challenges from API
   useEffect(() => {
     // Load real wallet balance
@@ -80,35 +126,6 @@ export default function MyChallenges() {
         console.error('Error loading wallet balance:', e);
       }
     })();
-
-    const fetchChallenges = async () => {
-      try {
-        setIsLoading(true);
-        const fetchedChallenges = await challengeService.getMyChallenges();
-        // Augment with dispute status
-        const challengesWithDisputes = await Promise.all(
-          fetchedChallenges.map(async (challenge) => {
-            try {
-              const existingDispute = await walletService.hasActiveDispute(challenge.id);
-              return { ...challenge, disputed: existingDispute } as any;
-            } catch (e) {
-              return { ...challenge, disputed: false } as any;
-            }
-          })
-        );
-        setChallenges(challengesWithDisputes);
-        setFilteredChallenges(challengesWithDisputes);
-      } catch (error) {
-        console.error('Error fetching challenges:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch challenges. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     fetchChallenges();
   }, [toast]);
@@ -304,6 +321,30 @@ export default function MyChallenges() {
     }
   };
 
+  const handleMarkReady = async (challengeId: string) => {
+    try {
+      await challengeService.markReady(challengeId);
+      
+      // Show success toast
+      toast({
+        title: "Ready!",
+        description: "You have marked yourself as ready. Waiting for other players...",
+        variant: "default",
+      });
+      
+      // Refresh challenges
+      const fetchedChallenges = await challengeService.getMyChallenges();
+      setChallenges(fetchedChallenges);
+    } catch (error: any) {
+      console.error('Error marking ready:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark ready",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Claim dispute for completed-lost challenges
   const handleClaimDispute = (challenge: any) => {
     openDisputeModal(challenge);
@@ -338,88 +379,112 @@ export default function MyChallenges() {
     }
   };
 
-  // Proof upload modal handlers
-  const openProofUploadModal = (challenge: Challenge) => {
-    console.log('🔍 MyChallenges: Opening proof upload modal with challenge:', challenge);
+  // Scorecard modal handlers
+  const openScorecardModal = (challenge: Challenge) => {
+    console.log('🔍 MyChallenges: Opening scorecard modal with challenge:', challenge);
     setSelectedChallenge(challenge);
-    setIsProofUploadModalOpen(true);
+    setIsScorecardModalOpen(true);
   };
 
-  const closeProofUploadModal = () => {
-    setIsProofUploadModalOpen(false);
+  const closeScorecardModal = () => {
+    setIsScorecardModalOpen(false);
     setSelectedChallenge(null);
   };
 
-  const handleProofSubmitted = (result: any) => {
-    console.log('Proof submitted successfully:', result);
-    closeProofUploadModal();
+  const handleScorecardSubmitted = (result: any) => {
+    console.log('Scorecard submitted successfully:', result);
+    closeScorecardModal();
     // Refresh challenges to show updated status
-    const fetchChallenges = async () => {
-      try {
-        const fetchedChallenges = await challengeService.getMyChallenges();
-        setChallenges(fetchedChallenges);
-      } catch (error) {
-        console.error('Error refreshing challenges:', error);
-      }
-    };
     fetchChallenges();
   };
 
-  // Robust winner detection using platform usernames and AI result
+  // AI verification modal handlers
+  const openAIVerificationModal = (challenge: Challenge) => {
+    setSelectedAIVerificationChallenge(challenge);
+    setIsAIVerificationModalOpen(true);
+  };
+
+  const closeAIVerificationModal = () => {
+    setIsAIVerificationModalOpen(false);
+    setSelectedAIVerificationChallenge(null);
+  };
+
+  const handleAIVerificationComplete = (result: any) => {
+    console.log('AI verification completed result:', result);
+    closeAIVerificationModal();
+    // Refresh challenges to show updated status
+    fetchChallenges();
+  };
+
+  // Enhanced winner detection using login username and platform usernames
   const didCurrentUserWin = (challenge: any): boolean => {
     try {
       if (!challenge || challenge.status !== 'completed') return false;
       const currentUsername = (user?.username || '').toLowerCase().trim();
       if (!currentUsername) return false;
 
-      // 1) Direct winner match against login username
-      const winnerLower = (challenge?.winner || '').toLowerCase().trim();
-      if (winnerLower && winnerLower === currentUsername) return true;
+      const winner = challenge?.winner || '';
+      const winnerLower = winner.toLowerCase().trim();
+      
+      console.log('🔍 Winner check:', {
+        currentUsername,
+        winnerLower,
+        challengeWinner: challenge?.winner,
+        challengePlatform: challenge?.platform,
+        challengeStatus: challenge?.status,
+        fullChallenge: challenge
+      });
 
-      // 2) Do NOT trust stored aiResult.iWin (it is relative to whoever submitted proof)
-
-      // 3) Compare AI/challenge winner against ALL of the user's platform usernames
-      const aiWinnerLower = (challenge?.aiResult?.winner || challenge?.winner || '').toLowerCase().trim();
-      if (!aiWinnerLower) return false;
-
-      const candidateUsernames: string[] = [];
-
-      // a) From challenge payload (challenger or opponent stored usernames)
-      if (challenge?.challenger?.username === user?.username) {
-        const map = challenge?.challengerPlatformUsernames || {};
-        Object.values(map).forEach((val: any) => {
-          if (val && typeof val === 'string') candidateUsernames.push(val.toLowerCase().trim());
-        });
-      } else {
-        const meOpp = Array.isArray(challenge?.opponents)
-          ? challenge.opponents.find((o: any) => o?.username === user?.username)
-          : null;
-        const maps = [meOpp?.accepterPlatformUsernames, meOpp?.platformUsernames];
-        maps.forEach((m: any) => {
-          if (m && typeof m === 'object') {
-            Object.values(m).forEach((val: any) => {
-              if (val && typeof val === 'string') candidateUsernames.push(val.toLowerCase().trim());
-            });
-          }
-        });
+      // 1. Direct match with login username
+      if (winnerLower === currentUsername) {
+        console.log('  - Direct login username match');
+        return true;
       }
 
-      // b) From logged-in profile as fallback (if not present on challenge doc yet)
-      const profilePlatforms = (user as any)?.platforms || [];
-      if (Array.isArray(profilePlatforms)) {
-        profilePlatforms.forEach((p: any) => {
-          const idVal = (p?.onlineUserId || '').toString().toLowerCase().trim();
-          if (idVal) candidateUsernames.push(idVal);
-        });
+      // 2. Check if winner is a platform username that matches current user's platform usernames
+      const currentUserPlatforms = (user as any)?.platforms || [];
+      const challengePlatform = challenge?.platform?.toLowerCase();
+      
+      // Get current user's platform username for this challenge's platform
+      const currentUserPlatformUsername = currentUserPlatforms.find((p: any) => 
+        p.platform?.toLowerCase() === challengePlatform
+      )?.onlineUserId?.toLowerCase().trim();
+      
+      if (currentUserPlatformUsername && winnerLower === currentUserPlatformUsername) {
+        console.log('  - Platform username match:', currentUserPlatformUsername);
+        return true;
       }
 
-      const uniqueCandidates = Array.from(new Set(candidateUsernames.filter(Boolean)));
-      if (uniqueCandidates.length === 0) return false;
+      // 3. Check challenger platform usernames
+      if (challenge?.challenger?.username === currentUsername) {
+        const challengerPlatformUsernames = challenge?.challengerPlatformUsernames || {};
+        const challengerPlatformUsername = challengerPlatformUsernames[challengePlatform]?.toLowerCase().trim();
+        
+        if (challengerPlatformUsername && winnerLower === challengerPlatformUsername) {
+          console.log('  - Challenger platform username match:', challengerPlatformUsername);
+          return true;
+        }
+      }
 
-      // 4) Fuzzy comparison ONLY between AI/challenge winner and user's platform IDs
-      const isMatch = uniqueCandidates.some((u) => aiWinnerLower.includes(u) || u.includes(aiWinnerLower));
-      return isMatch;
-    } catch {
+      // 4. Check opponent platform usernames
+      const currentUserOpponent = challenge?.opponents?.find((opp: any) => 
+        opp.username === currentUsername
+      );
+      
+      if (currentUserOpponent) {
+        const opponentPlatformUsernames = currentUserOpponent?.accepterPlatformUsernames || {};
+        const opponentPlatformUsername = opponentPlatformUsernames[challengePlatform]?.toLowerCase().trim();
+        
+        if (opponentPlatformUsername && winnerLower === opponentPlatformUsername) {
+          console.log('  - Opponent platform username match:', opponentPlatformUsername);
+          return true;
+        }
+      }
+
+      console.log('  - No match found');
+      return false;
+    } catch (error) {
+      console.error('Error in didCurrentUserWin:', error);
       return false;
     }
   };
@@ -675,16 +740,16 @@ export default function MyChallenges() {
                                       </>
                                     )}
                                     
-                                    {/* Show Claim Reward for active incoming challenges where YOU have accepted */}
-                                    {challenge.status === 'active' && challenge.type === 'incoming' && 
+                                    {/* Show Submit Scorecard for active or scorecard-pending incoming challenges where YOU have accepted */}
+                                    {['active', 'scorecard-pending'].includes(challenge.status) && challenge.type === 'incoming' && 
                                      challenge.opponents.some(opp => opp.username === user?.username && opp.status === 'accepted') && (
                                       <Button
                                         size="sm"
-                                        onClick={() => openProofUploadModal(challenge)}
+                                        onClick={() => openScorecardModal(challenge)}
                                         className="h-6 px-2 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
                                       >
                                         <Trophy className="h-3 w-3 mr-1" />
-                                        Claim Reward
+                                        Submit Scorecard
                                       </Button>
                                     )}
                                     
@@ -716,16 +781,16 @@ export default function MyChallenges() {
                                       </div>
                                     )}
                                     
-                                    {/* Show Claim Reward for outgoing challenges where ANY opponent accepted (you're the challenger) */}
-                                    {challenge.status === 'active' && challenge.opponents && 
+                                    {/* Show Submit Scorecard for outgoing challenges where ANY opponent accepted (you're the challenger) */}
+                                    {['active', 'scorecard-pending'].includes(challenge.status) && challenge.opponents && 
                                      challenge.opponents.some(opp => opp.status === 'accepted') && (
                                       <Button
                                         size="sm"
-                                        onClick={() => openProofUploadModal(challenge)}
+                                        onClick={() => openScorecardModal(challenge)}
                                         className="h-6 px-2 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
                                       >
                                         <Trophy className="h-3 w-3 mr-1" />
-                                        Claim Reward
+                                        Submit Scorecard
                                       </Button>
                                     )}
 
@@ -735,6 +800,74 @@ export default function MyChallenges() {
                                       <Badge variant="secondary" className="text-xs bg-warning/20 text-warning border-warning/30">
                                         Waiting for Opponent to Accept
                                       </Badge>
+                                    )}
+
+                                    {/* Show Ready button for ready-pending challenges */}
+                                    {challenge.status === 'ready-pending' && (
+                                      <div className="space-y-2">
+                                        <Badge variant="secondary" className="text-xs bg-warning/20 text-warning border-warning/30">
+                                          Mark Ready to Start
+                                        </Badge>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleMarkReady(challenge.id)}
+                                          className="font-orbitron font-bold text-xs transition-all duration-300 hover:shadow-neon-green"
+                                        >
+                                          <Play className="h-3 w-3 mr-1" />
+                                          Mark Ready
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Show status info for scorecard-pending challenges */}
+                                    {challenge.status === 'scorecard-pending' && (
+                                      <div className="space-y-2">
+                                        <Badge variant="secondary" className="text-xs bg-warning/20 text-warning border-warning/30">
+                                          Waiting for Scorecard
+                                        </Badge>
+                                        <ScorecardTimer 
+                                          challengeId={challenge.id}
+                                          onTimerExpired={() => fetchChallenges()}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Show status info for scorecard-conflict challenges */}
+                                    {challenge.status === 'scorecard-conflict' && (
+                                      <div className="space-y-2">
+                                        <Badge variant="secondary" className="text-xs bg-orange-20 text-orange-600 border-orange-300">
+                                          Scorecard Conflict
+                                        </Badge>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => openAIVerificationModal(challenge)}
+                                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-orbitron font-bold text-xs transition-all duration-300"
+                                        >
+                                          <Trophy className="h-3 w-3 mr-1" />
+                                          Claim using AI
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Show status info for ai-verification-pending challenges */}
+                                    {challenge.status === 'ai-verification-pending' && (
+                                      <div className="space-y-2">
+                                        <Badge variant="secondary" className="text-xs bg-purple-20 text-purple-600 border-purple-300">
+                                          Waiting for AI Verification
+                                        </Badge>
+                                        <AiVerificationTimer 
+                                          challengeId={challenge.id}
+                                          onTimerExpired={() => fetchChallenges()}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() => openAIVerificationModal(challenge)}
+                                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-orbitron font-bold text-xs transition-all duration-300"
+                                        >
+                                          <Trophy className="h-3 w-3 mr-1" />
+                                          Upload AI Proof
+                                        </Button>
+                                      </div>
                                     )}
                                   </>
                                 )}
@@ -810,13 +943,23 @@ export default function MyChallenges() {
         </div>
       </div>
 
-      {/* Proof Upload Modal */}
+      {/* Scorecard Modal */}
       {selectedChallenge && (
-        <ProofUploadModal
-          isOpen={isProofUploadModalOpen}
-          onClose={closeProofUploadModal}
+        <ScorecardModal
+          isOpen={isScorecardModalOpen}
+          onClose={closeScorecardModal}
           challenge={selectedChallenge}
-          onProofSubmitted={handleProofSubmitted}
+          onScorecardSubmitted={handleScorecardSubmitted}
+        />
+      )}
+
+      {/* AI Verification Modal */}
+      {selectedAIVerificationChallenge && (
+        <AIVerificationModal
+          isOpen={isAIVerificationModalOpen}
+          onClose={closeAIVerificationModal}
+          challenge={selectedAIVerificationChallenge}
+          onVerificationComplete={handleAIVerificationComplete}
         />
       )}
       

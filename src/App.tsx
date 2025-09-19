@@ -21,6 +21,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminPortal from "./pages/AdminPortal";
 import { AdminRoute } from "@/components/AdminRoute";
 import ForgotPassword from "./pages/ForgotPassword";
+import TestRoute from "./pages/TestRoute";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
             } />
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/test-route" element={<TestRoute />} />
             <Route path="/admin_portal_management_control" element={
               <AdminRoute>
                 <AdminPortal />

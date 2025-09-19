@@ -83,6 +83,7 @@ export default function Profile() {
   const [stripeDepositAmount, setStripeDepositAmount] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalMethod, setWithdrawalMethod] = useState('paypal');
+  const [paypalEmail, setPaypalEmail] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
   const [bankRoutingNumber, setBankRoutingNumber] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -1394,11 +1395,11 @@ export default function Profile() {
                             type="email"
                             placeholder="PayPal Email for payout"
                             className="bg-secondary/30 border-border/50"
-                            value={user?.email || ''}
-                            readOnly
+                            value={paypalEmail}
+                            onChange={(e) => setPaypalEmail(e.target.value)}
                           />
                           <p className="text-xs text-muted-foreground">
-                            Withdrawals will be sent to your registered email: {user?.email}
+                            Withdrawals will be sent to: {paypalEmail} (Sandbox testing email)
                           </p>
                           
                           {/* Withdrawal Method Selection */}
@@ -1486,7 +1487,7 @@ export default function Profile() {
                             onClick={async () => {
                               // TEMP: On click, fetch PayPal platform balance and show in alert
                               try {
-                                const resp = await fetch(`${API_BASE_URL}/wallet/paypal/balance?fullRange=true`, {
+                                const resp = await fetch(`${API_BASE_URL}/wallet/business-balance`, {
                                   method: 'GET',
                                   headers: {
                                     'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1494,23 +1495,18 @@ export default function Profile() {
                                 });
                                 const data = await resp.json();
                                 if (resp.ok && data.success) {
-                                  // Support direct balances or computed fallback
-                                  if (data?.data?.computedBalance !== undefined) {
-                                    alert(`PayPal Computed Balance (last 30d): ${data.data.currency} ${Number(data.data.computedBalance).toFixed(2)}`);
-                                  } else {
-                                    const balances = data?.data?.balances || [];
-                                    const usd = balances.find((b: any) => (b.currency || b.currency_code) === 'USD');
-                                    const available = usd?.available_balance?.value || balances[0]?.available_balance?.value || 'N/A';
-                                    const currency = usd ? 'USD' : (balances[0]?.available_balance?.currency_code || balances[0]?.currency || '');
-                                    alert(`PayPal Available Balance: ${currency ? `${currency} ` : ''}${available}`);
-                                  }
+                                  // Business balance API response
+                                  const balance = data.data.balance;
+                                  const currency = data.data.currency || 'CAD';
+                                  const transactionCount = data.data.transactionCount || 0;
+                                  
+                                  alert(`Business Wallet Balance: ${currency} ${balance.toFixed(2)}\nTransactions: ${transactionCount}`);
                                 } else {
-                                  alert(data?.message || data?.error || 'Failed to fetch PayPal balance');
+                                  alert(data?.message || data?.error || 'Failed to fetch business balance');
                                 }
                               } catch (e: any) {
                                 alert(`Failed to fetch PayPal balance: ${e?.message || e}`);
                               }
-                              return; // stop here for now per request
                               // Validate withdrawal amount
                               if (!withdrawalAmount || parseFloat(withdrawalAmount) < 10) {
                                 alert('Minimum withdrawal amount is $10.00');
@@ -1535,6 +1531,14 @@ export default function Profile() {
                                 }
                               }
                               
+                              // Validate PayPal email for PayPal withdrawals
+                              if (withdrawalMethod === 'paypal') {
+                                if (!paypalEmail || !paypalEmail.includes('@')) {
+                                  alert('Please enter a valid PayPal email address');
+                                  return;
+                                }
+                              }
+                              
                               try {
                                 // Use the new withdrawal endpoint
                                 const response = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
@@ -1547,7 +1551,7 @@ export default function Profile() {
                                     amount: parseFloat(withdrawalAmount),
                                     description: `Withdrawal of $${withdrawalAmount}`,
                                     preferredPayoutMethod: withdrawalMethod,
-                                    payoutEmail: user?.email,
+                                    payoutEmail: paypalEmail,
                                     bankDetails: withdrawalMethod === 'stripe' ? {
                                       accountHolderName: bankAccountHolder,
                                       routingNumber: bankRoutingNumber,

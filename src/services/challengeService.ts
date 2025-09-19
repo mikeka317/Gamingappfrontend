@@ -24,7 +24,7 @@ export interface Challenge {
   isPublic: boolean;
   myTeam?: string; // legacy
   challengerPlatformUsernames?: { [platform: string]: string }; // legacy
-  status: 'pending' | 'active' | 'completed' | 'cancelled' | 'expired' | 'proof-submitted' | 'verifying' | 'ai-verified' | 'needs-proof';
+  status: 'pending' | 'ready-pending' | 'active' | 'completed' | 'cancelled' | 'expired' | 'proof-submitted' | 'verifying' | 'ai-verified' | 'needs-proof' | 'scorecard-pending' | 'scorecard-conflict' | 'ai-verification-pending' | 'ai-conflict';
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;
@@ -43,6 +43,18 @@ export interface Challenge {
   // Optional fields added by client for disputes handling
   disputed?: boolean;
   disputeResolved?: boolean;
+  // Scorecard related fields
+  scorecards?: Array<{
+    playerAScore: number;
+    playerBScore: number;
+    playerAPlatformUsername: string;
+    playerBPlatformUsername: string;
+    submittedBy: string;
+    submittedAt: Date;
+    timestamp: number;
+  }>;
+  scorecardTimerStarted?: Date;
+  conflictDetectedAt?: Date;
 }
 
 export interface CreateChallengeRequest {
@@ -71,6 +83,18 @@ class ChallengeService {
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`
+    };
+  }
+
+  private getAuthHeadersForFormData(): HeadersInit {
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      throw new Error('No authentication token found');
+    }
+    
+    return {
+      'Authorization': `Bearer ${authToken}`
+      // Don't set Content-Type for FormData - let browser set it with boundary
     };
   }
 
@@ -306,6 +330,243 @@ class ChallengeService {
       }
     } catch (error) {
       console.error('Error joining challenge:', error);
+      throw error;
+    }
+  }
+
+  // Submit scorecard for challenge
+  async submitScorecard(challengeId: string, scorecardData: {
+    playerAScore: number;
+    playerBScore: number;
+    playerAPlatformUsername: string;
+    playerBPlatformUsername: string;
+  }): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/submit-scorecard`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(scorecardData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error submitting scorecard:', error);
+      throw error;
+    }
+  }
+
+  // Check scorecard status
+  async getScorecardStatus(challengeId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/scorecard-status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error checking scorecard status:', error);
+      throw error;
+    }
+  }
+
+  // Submit proof for scorecard conflict
+  async submitProofForConflict(challengeId: string, proofData: {
+    description: string;
+    proofImages?: File[];
+  }): Promise<any> {
+    try {
+      const formData = new FormData();
+      formData.append('description', proofData.description);
+      
+      if (proofData.proofImages) {
+        proofData.proofImages.forEach(image => {
+          formData.append('proofImages', image);
+        });
+      }
+
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/submit-proof`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error submitting proof for conflict:', error);
+      throw error;
+    }
+  }
+
+  // Process auto-forfeit
+  async processAutoForfeit(challengeId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/auto-forfeit`, {
+        method: 'POST',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error processing auto-forfeit:', error);
+      throw error;
+    }
+  }
+
+  // Submit AI verification for scorecard conflict
+  async submitAIVerification(challengeId: string, proofData: {
+    description: string;
+    proofImages: File[];
+  }): Promise<any> {
+    try {
+      const formData = new FormData();
+      formData.append('description', proofData.description);
+      
+      // Add all proof images
+      proofData.proofImages.forEach((image, index) => {
+        formData.append(`proofImages`, image);
+      });
+
+      console.log('🤖 Submitting AI verification with FormData:', {
+        challengeId,
+        description: proofData.description,
+        imageCount: proofData.proofImages.length
+      });
+
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/ai-verification`, {
+        method: 'POST',
+        headers: this.getAuthHeadersForFormData(),
+        body: formData
+      });
+
+      console.log('🤖 AI verification response status:', response.status);
+      console.log('🤖 AI verification response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.error('❌ Failed to parse error response as JSON:', e);
+          const errorText = await response.text();
+          console.error('❌ Error response text:', errorText);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log('🤖 AI verification response data:', data);
+      return data;
+    } catch (error) {
+      console.error('Error submitting AI verification:', error);
+      throw error;
+    }
+  }
+
+  // Mark ready for challenge
+  async markReady(challengeId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/ready`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to mark ready');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking ready:', error);
+      throw error;
+    }
+  }
+
+  // Get timer status for scorecard submission
+  async getTimerStatus(challengeId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/timer-status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to get timer status');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting timer status:', error);
+      throw error;
+    }
+  }
+
+  // Get AI verification timer status
+  async getAiTimerStatus(challengeId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/ai-timer-status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to get AI timer status');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting AI timer status:', error);
+      throw error;
+    }
+  }
+
+  // Resolve AI conflict (admin only)
+  async resolveAiConflict(challengeId: string, winner: string, adminReason?: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/resolve-ai-conflict`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ winner, adminReason })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to resolve AI conflict');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error resolving AI conflict:', error);
       throw error;
     }
   }

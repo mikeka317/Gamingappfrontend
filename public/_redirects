@@ -1,1 +1,10 @@
+# SPA fallback for client-side routing
 /*    /index.html   200
+
+# Specific routes for better performance
+/profile    /index.html   200
+/dashboard    /index.html   200
+/lobby    /index.html   200
+/my-challenges    /index.html   200
+/challenges-for-me    /index.html   200
+/transactions    /index.html   200

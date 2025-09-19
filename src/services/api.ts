@@ -1,7 +1,7 @@
 // API service for backend communication
 import { User } from '../types/user';
 
-// const API_BASE_URL = 'http://localhost:5072/api';
+// export const API_BASE_URL = 'http://localhost:5072/api';
 export const API_BASE_URL = 'https://gamingappbackend.onrender.com/api';
 
 export interface LoginRequest {
