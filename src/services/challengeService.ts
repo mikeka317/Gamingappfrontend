@@ -233,6 +233,33 @@ class ChallengeService {
     }
   }
 
+  // Bulk check dispute status for multiple challenges
+  async bulkCheckDisputes(challengeIds: string[]): Promise<Record<string, boolean>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/challenges/bulk-dispute-check`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ challengeIds })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data as Record<string, boolean>;
+      } else {
+        throw new Error(data.message || 'Failed to check dispute status');
+      }
+    } catch (error) {
+      console.error('Error checking dispute status:', error);
+      throw error;
+    }
+  }
+
   // Accept or decline a challenge
   async respondToChallenge(challengeId: string, response: 'accept' | 'decline', myTeam?: string, accepterPlatformUsernames?: { [platform: string]: string }): Promise<Challenge> {
     try {

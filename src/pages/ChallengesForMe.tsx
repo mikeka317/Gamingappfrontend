@@ -76,48 +76,63 @@ export default function ChallengesForMe() {
   const disputeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch challenges for the current user
-  // Fetch challenges function
+  // Fetch challenges function - OPTIMIZED
   const fetchChallenges = async () => {
     try {
       setLoading(true);
       console.log('🔍 ChallengesForMe: Fetching challenges for user:', user?.username);
-      console.log('🔍 ChallengesForMe: User UID:', user?.uid);
       
       const fetchedChallenges = await challengeService.getChallengesForMe();
-      console.log('✅ ChallengesForMe: Challenges fetched:', fetchedChallenges);
-      console.log('✅ ChallengesForMe: Number of challenges:', fetchedChallenges.length);
+      console.log('✅ ChallengesForMe: Challenges fetched:', fetchedChallenges.length);
       
-      // Debug: Log challenge statuses
-      fetchedChallenges.forEach((challenge, index) => {
-        console.log(`🔍 Challenge ${index + 1}: ID=${challenge.id}, Status=${challenge.status}`);
-        console.log(`🔍 Challenge ${index + 1} Winner:`, challenge.winner);
-        console.log(`🔍 Challenge ${index + 1} Winner Check:`, didCurrentUserWin(challenge));
-        if (challenge.status === 'scorecard-pending') {
-          console.log('⏰ Found scorecard-pending challenge:', challenge.id);
+      // OPTIMIZATION: Bulk check disputes instead of N+1 queries
+      const challengeIds = fetchedChallenges.map(c => c.id);
+      let disputeStatus: Record<string, boolean> = {};
+      
+      if (challengeIds.length > 0) {
+        try {
+          disputeStatus = await challengeService.bulkCheckDisputes(challengeIds);
+        } catch (disputeError) {
+          console.warn('Failed to check dispute status, defaulting to false:', disputeError);
+          // Fallback: set all disputes to false
+          challengeIds.forEach(id => {
+            disputeStatus[id] = false;
+          });
         }
-      });
+      }
       
-      // Check for existing disputes for each challenge
-      const challengesWithDisputes = await Promise.all(
-        fetchedChallenges.map(async (challenge) => {
-          try {
-            // Check if user already has a dispute for this challenge
-            const existingDispute = await walletService.hasActiveDispute(challenge.id);
-            return {
-              ...challenge,
-              disputed: existingDispute
-            };
-          } catch (error) {
-            console.error('Error checking dispute status for challenge:', challenge.id, error);
-            return { ...challenge, disputed: false };
-          }
-        })
-      );
+      // Augment with dispute status using bulk result
+      const challengesWithDisputes = fetchedChallenges.map(challenge => ({
+        ...challenge,
+        disputed: disputeStatus[challenge.id] || false
+      }));
       
       setChallenges(challengesWithDisputes);
+      console.log(`✅ Loaded ${challengesWithDisputes.length} challenges with bulk dispute check`);
+      
     } catch (error) {
       console.error('❌ ChallengesForMe: Error fetching challenges:', error);
-      // Keep empty array for now
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to fetch challenges. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = "Unable to connect to server. Please check your internet connection.";
+        } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          errorMessage = "Session expired. Please log in again.";
+        } else if (error.message.includes('500')) {
+          errorMessage = "Server error. Please try again in a moment.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
       setChallenges([]);
     } finally {
       setLoading(false);

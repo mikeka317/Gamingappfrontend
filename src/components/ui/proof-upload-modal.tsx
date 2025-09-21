@@ -101,6 +101,12 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
 
   const markChallengeAsCompleted = async (challengeId: string, aiResult: any) => {
     try {
+      console.log('📡 Making request to complete endpoint:', {
+        url: `${API_BASE_URL}/challenges/${challengeId}/complete`,
+        challengeId,
+        aiResult
+      });
+      
       const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/complete`, {
         method: 'POST',
         headers: {
@@ -113,8 +119,13 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
         })
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`Failed to mark challenge as completed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`Failed to mark challenge as completed: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -133,6 +144,11 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
     }
 
     try {
+      console.log('🤖 ===== STARTING AI VERIFICATION =====');
+      console.log('🤖 Challenge:', challenge);
+      console.log('🤖 Proof images count:', proofImages.length);
+      console.log('🤖 Proof description:', proofDescription);
+      
       setIsAnalyzing(true);
       
       // Use the first image for AI verification
@@ -242,13 +258,32 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
 
       // Mark challenge as completed in the backend
       try {
+        console.log('🚀 ===== CALLING COMPLETE ENDPOINT =====');
+        
         // Persist proof image URL to challenge if backend returned it
         const resultWithProof = { ...aiResult } as any;
-        await markChallengeAsCompleted(challenge.id, resultWithProof);
-        console.log('✅ Challenge marked as completed');
+        
+        console.log('🚀 Sending AI result to backend:', {
+          challengeId: challenge.id,
+          aiResult: resultWithProof,
+          winner: resultWithProof.winner,
+          iWin: resultWithProof.iWin,
+          currentUser: currentUsername,
+          platformUsername: platformUsername
+        });
+        
+        const completeResult = await markChallengeAsCompleted(challenge.id, resultWithProof);
+        console.log('✅ Challenge marked as completed successfully:', completeResult);
+        
+        // Show success message to user
+        alert('Challenge completed successfully! Rewards have been distributed.');
+        
       } catch (error) {
         console.error('❌ Failed to mark challenge as completed:', error);
-        // Don't throw error here - user can still see the result
+        console.error('❌ Error details:', error.response?.data || error.message);
+        
+        // Show error message to user
+        alert(`Failed to complete challenge: ${error.response?.data?.message || error.message}`);
       }
 
     } catch (error: any) {
@@ -467,7 +502,16 @@ export function ProofUploadModal({ isOpen, onClose, challenge, onProofSubmitted 
 
               <div className="flex gap-3">
                 <Button
-                  onClick={handleAIVerification}
+                  onClick={() => {
+                    console.log('🎯 Claim Reward button clicked!');
+                    console.log('🎯 Button state:', {
+                      isAnalyzing,
+                      proofImagesLength: proofImages.length,
+                      proofDescription: proofDescription.trim(),
+                      disabled: isAnalyzing || proofImages.length === 0 || !proofDescription.trim()
+                    });
+                    handleAIVerification();
+                  }}
                   disabled={isAnalyzing || proofImages.length === 0 || !proofDescription.trim()}
                   className="flex-1 bg-primary hover:bg-primary/90"
                 >

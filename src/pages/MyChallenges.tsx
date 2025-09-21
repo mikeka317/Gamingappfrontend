@@ -34,6 +34,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { challengeService } from '../services/challengeService';
 import { walletService } from '../services/walletService';
+import { API_BASE_URL } from '../services/api';
 import { ChallengeDetailsModal } from '@/components/ui/challenge-details-modal';
 import { NewChallengeModal } from '@/components/ui/new-challenge-modal';
 import { Challenge } from '@/services/challengeService';
@@ -42,7 +43,6 @@ import { ScorecardModal } from '@/components/ui/scorecard-modal';
 import { AIVerificationModal } from '@/components/ui/ai-verification-modal';
 import { ScorecardTimer } from '@/components/ui/scorecard-timer';
 import { AiVerificationTimer } from '@/components/ui/ai-verification-timer';
-import { API_BASE_URL } from '@/services/api';
 
 export default function MyChallenges() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -53,6 +53,10 @@ export default function MyChallenges() {
   // Challenge details modal state
   const [isChallengeDetailsModalOpen, setIsChallengeDetailsModalOpen] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
+  
+  // Caching state
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const CACHE_DURATION = 30000; // 30 seconds cache
   
   // New challenge modal state
   const [isNewChallengeModalOpen, setIsNewChallengeModalOpen] = useState(false);
@@ -78,36 +82,84 @@ export default function MyChallenges() {
   const [disputeProofImages, setDisputeProofImages] = useState<File[]>([]);
   const disputeFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch challenges function
-  const fetchChallenges = async () => {
+  // Fetch challenges function - OPTIMIZED with caching and retry
+  const fetchChallenges = async (forceRefresh = false, retryCount = 0) => {
     try {
+      // Check cache first
+      const now = Date.now();
+      if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION && challenges.length > 0) {
+        console.log('📦 Using cached challenges data');
+        return;
+      }
+
       setIsLoading(true);
+      console.log(`🔄 Fetching challenges (attempt ${retryCount + 1})`);
+      
       const fetchedChallenges = await challengeService.getMyChallenges();
-      // Augment with dispute status
-      const challengesWithDisputes = await Promise.all(
-        fetchedChallenges.map(async (challenge) => {
-          try {
-            const existingDispute = await walletService.hasActiveDispute(challenge.id);
-            return { ...challenge, disputed: existingDispute } as any;
-          } catch (e) {
-            return { ...challenge, disputed: false } as any;
-          }
-        })
-      );
+      
+      // OPTIMIZATION: Bulk check disputes instead of N+1 queries
+      const challengeIds = fetchedChallenges.map(c => c.id);
+      let disputeStatus: Record<string, boolean> = {};
+      
+      if (challengeIds.length > 0) {
+        try {
+          disputeStatus = await challengeService.bulkCheckDisputes(challengeIds);
+        } catch (disputeError) {
+          console.warn('Failed to check dispute status, defaulting to false:', disputeError);
+          // Fallback: set all disputes to false
+          challengeIds.forEach(id => {
+            disputeStatus[id] = false;
+          });
+        }
+      }
+      
+      // Augment with dispute status using bulk result
+      const challengesWithDisputes = fetchedChallenges.map(challenge => ({
+        ...challenge,
+        disputed: disputeStatus[challenge.id] || false
+      })) as any[];
+      
       setChallenges(challengesWithDisputes);
       setFilteredChallenges(challengesWithDisputes);
+      setLastFetchTime(now);
       
-      // Debug: Log challenge statuses and winners
-      challengesWithDisputes.forEach((challenge, index) => {
-        console.log(`🔍 MyChallenges Challenge ${index + 1}: ID=${challenge.id}, Status=${challenge.status}`);
-        console.log(`🔍 MyChallenges Challenge ${index + 1} Winner:`, challenge.winner);
-        console.log(`🔍 MyChallenges Challenge ${index + 1} Winner Check:`, didCurrentUserWin(challenge));
-      });
+      console.log(`✅ Loaded ${challengesWithDisputes.length} challenges with bulk dispute check`);
+      
     } catch (error) {
       console.error('Error fetching challenges:', error);
+      
+      // Retry logic for transient errors
+      if (retryCount < 2 && (
+        error instanceof Error && (
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('500') ||
+          error.message.includes('Network')
+        )
+      )) {
+        console.log(`🔄 Retrying fetch challenges (attempt ${retryCount + 2})`);
+        setTimeout(() => {
+          fetchChallenges(forceRefresh, retryCount + 1);
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+        return;
+      }
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to fetch challenges. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = "Unable to connect to server. Please check your internet connection.";
+        } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          errorMessage = "Session expired. Please log in again.";
+        } else if (error.message.includes('500')) {
+          errorMessage = "Server error. Please try again in a moment.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to fetch challenges. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -133,6 +185,16 @@ export default function MyChallenges() {
   // Filter challenges based on selected filter and search term
   useEffect(() => {
     let filtered = challenges;
+
+    // Hide challenges where reward has been claimed
+    filtered = filtered.filter(challenge => {
+      // If challenge is completed and user won, check if reward was claimed
+      if (challenge.status === 'completed' && didCurrentUserWin(challenge)) {
+        return !(challenge as any).rewardClaimed;
+      }
+      // Show all other challenges
+      return true;
+    });
 
     // Apply status filter
     if (selectedFilter !== 'all') {
@@ -395,7 +457,7 @@ export default function MyChallenges() {
     console.log('Scorecard submitted successfully:', result);
     closeScorecardModal();
     // Refresh challenges to show updated status
-    fetchChallenges();
+    fetchChallenges(true); // Force refresh
   };
 
   // AI verification modal handlers
@@ -413,7 +475,79 @@ export default function MyChallenges() {
     console.log('AI verification completed result:', result);
     closeAIVerificationModal();
     // Refresh challenges to show updated status
-    fetchChallenges();
+    fetchChallenges(true); // Force refresh
+  };
+
+  // Claim reward handler - automatically credit winner
+  const handleClaimReward = async (challenge: Challenge) => {
+    try {
+      console.log('🎯 MyChallenges: Claiming reward for challenge:', challenge);
+      
+      // Show confirmation dialog
+      const rewardAmount = (challenge.stake * 1.9).toFixed(2);
+      const confirmed = window.confirm(
+        `Are you sure you want to claim your reward of $${rewardAmount}?\n\nThis will automatically credit the funds to your wallet.`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // Show loading state
+      setIsLoading(true);
+      
+      // Determine the winner from the challenge data
+      const currentUsername = user?.username || '';
+      const challengeWinner = challenge?.winner || '';
+      const isCurrentUserWinner = didCurrentUserWin(challenge);
+      
+      console.log('🎯 Winner determination:', {
+        currentUsername,
+        challengeWinner,
+        isCurrentUserWinner,
+        challengeStatus: challenge.status
+      });
+      
+      // Call the claim-reward endpoint for already completed challenges
+      const response = await fetch(`${API_BASE_URL}/challenges/${challenge.id}/claim-reward`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          winner: challengeWinner
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to claim reward: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Reward claimed successfully:', result);
+      
+      // Show success message
+      toast({
+        title: "Success!",
+        description: `Reward of $${(challenge.stake * 1.9).toFixed(2)} has been credited to your wallet!`,
+        variant: "default"
+      });
+      
+      // Refresh challenges
+      await fetchChallenges(true); // Force refresh
+      
+    } catch (error) {
+      console.error('❌ Error claiming reward:', error);
+      toast({
+        title: "Error",
+        description: `Failed to claim reward: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Enhanced winner detection using login username and platform usernames
@@ -827,7 +961,7 @@ export default function MyChallenges() {
                                         </Badge>
                                         <ScorecardTimer 
                                           challengeId={challenge.id}
-                                          onTimerExpired={() => fetchChallenges()}
+                                          onTimerExpired={() => fetchChallenges(true)}
                                         />
                                       </div>
                                     )}
@@ -857,7 +991,7 @@ export default function MyChallenges() {
                                         </Badge>
                                         <AiVerificationTimer 
                                           challengeId={challenge.id}
-                                          onTimerExpired={() => fetchChallenges()}
+                                          onTimerExpired={() => fetchChallenges(true)}
                                         />
                                         <Button
                                           size="sm"
@@ -872,7 +1006,29 @@ export default function MyChallenges() {
                                   </>
                                 )}
                                 
-                                {/* Claim Dispute for completed challenges */}
+                                {/* Claim Reward for completed challenges where user won */}
+                                {challenge.status === 'completed' && didCurrentUserWin(challenge) && !(challenge as any).rewardClaimed && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleClaimReward(challenge)}
+                                    disabled={isLoading}
+                                    className="h-6 px-2 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-orbitron font-bold transition-all duration-300 hover:shadow-neon-orange disabled:opacity-50"
+                                  >
+                                    {isLoading ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                        Claiming...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Trophy className="h-3 w-3 mr-1" />
+                                        Claim Reward
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+
+                                {/* Claim Dispute for completed challenges where user lost */}
                                 {challenge.status === 'completed' && !didCurrentUserWin(challenge) && !(challenge as any).disputeResolved && (
                                   <Button
                                     size="sm"
@@ -1090,6 +1246,7 @@ export default function MyChallenges() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -83,6 +83,8 @@ export default function Profile() {
   const [stripeDepositAmount, setStripeDepositAmount] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalMethod, setWithdrawalMethod] = useState('paypal');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawalType, setWithdrawalType] = useState(''); // 'paypal' or 'stripe'
   const [paypalEmail, setPaypalEmail] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
   const [bankRoutingNumber, setBankRoutingNumber] = useState('');
@@ -97,6 +99,8 @@ export default function Profile() {
   const [countries, setCountries] = useState<{ countryCode: string; countryName: string }[]>([]);
   const [isLoadingCountries, setIsLoadingCountries] = useState<boolean>(false);
   const [countriesError, setCountriesError] = useState<string | null>(null);
+  const [activeDepositTab, setActiveDepositTab] = useState('paypal');
+  const [activeWithdrawalTab, setActiveWithdrawalTab] = useState('paypal');
   
   // Platform management states
   const [isAddingPlatform, setIsAddingPlatform] = useState(false);
@@ -1221,18 +1225,34 @@ export default function Profile() {
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader>
                       <CardTitle className="font-orbitron">Deposit Funds</CardTitle>
-                      <CardDescription>Add money to your wallet using PayPal or Stripe</CardDescription>
+                      <CardDescription>Add money to your wallet using your preferred method</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* PayPal Deposit */}
+                    <CardContent>
+                      <Tabs value={activeDepositTab} onValueChange={setActiveDepositTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="paypal" className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">PP</span>
+                            </div>
+                            PayPal
+                          </TabsTrigger>
+                          <TabsTrigger value="bank" className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-purple-600 rounded flex items-center justify-center">
+                              <span className="text-white text-xs">💳</span>
+                            </div>
+                            Bank Cards
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="paypal" className="space-y-4 mt-6">
                       <div className="p-4 border border-border/30 rounded-lg bg-gradient-glow">
                         <div className="flex items-center gap-3 mb-3">
                           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
                             <span className="text-white font-bold text-sm">PP</span>
                           </div>
                           <div>
-                            <h4 className="font-orbitron font-semibold">PayPal</h4>
-                            <p className="text-xs text-muted-foreground">Instant deposits</p>
+                                <h4 className="font-orbitron font-semibold">Deposit via PayPal</h4>
+                                <p className="text-xs text-muted-foreground">Instant deposits with PayPal</p>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -1300,16 +1320,17 @@ export default function Profile() {
                           </Button>
                         </div>
                       </div>
+                        </TabsContent>
 
-                      {/* Stripe Deposit */}
+                        <TabsContent value="bank" className="space-y-4 mt-6">
                       <div className="p-4 border border-border/30 rounded-lg bg-gradient-glow">
                         <div className="flex items-center gap-3 mb-3">
                           <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
                             <span className="text-white font-bold text-sm">💳</span>
                           </div>
                           <div>
-                            <h4 className="font-orbitron font-semibold">Stripe</h4>
-                            <p className="text-xs text-muted-foreground">Credit/Debit cards</p>
+                                <h4 className="font-orbitron font-semibold">Deposit via Bank Cards</h4>
+                                <p className="text-xs text-muted-foreground">Credit/Debit cards via Stripe</p>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -1335,12 +1356,14 @@ export default function Profile() {
                             ) : (
                               <div className="flex items-center gap-2">
                                 <span>💳</span>
-                                Deposit with Stripe
+                                    Deposit with Bank Card
                               </div>
                             )}
                           </Button>
                         </div>
                       </div>
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
 
@@ -1348,34 +1371,44 @@ export default function Profile() {
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader>
                       <CardTitle className="font-orbitron">Withdraw Funds</CardTitle>
-                      <CardDescription>Withdraw your winnings using our multi-gateway system</CardDescription>
+                      <CardDescription>Withdraw your winnings using your preferred method</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Multi-Gateway Wallet Info */}
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-0.5">
-                            <span className="text-white text-xs">ℹ️</span>
+                    <CardContent>
+                      <Tabs value={activeWithdrawalTab} onValueChange={setActiveWithdrawalTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="paypal" className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">PP</span>
                           </div>
-                          <div className="text-sm text-blue-800">
-                            <p className="font-semibold mb-2">How Our Multi-Gateway Wallet Works:</p>
-                            <ul className="space-y-1 text-xs">
-                              <li>• <strong>Deposits:</strong> Add funds via PayPal or Stripe</li>
-                              <li>• <strong>Unified Balance:</strong> All funds go to your single wallet</li>
-                              <li>• <strong>Withdrawals:</strong> We handle the payout method automatically</li>
-                              <li>• <strong>No Restrictions:</strong> Withdraw regardless of deposit source</li>
-                            </ul>
+                            PayPal
+                          </TabsTrigger>
+                          <TabsTrigger value="bank" className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-green-600 rounded flex items-center justify-center">
+                              <span className="text-white text-xs">🏦</span>
                           </div>
+                            Bank Cards
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="paypal" className="space-y-4 mt-6">
+                        <div className={`p-4 border border-border/30 rounded-lg bg-gradient-glow relative ${isWithdrawing && withdrawalType === 'paypal' ? 'opacity-75' : ''}`}>
+                          {isWithdrawing && withdrawalType === 'paypal' && (
+                            <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-10">
+                              <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                  <span className="font-semibold">Processing PayPal Withdrawal...</span>
                         </div>
                                             </div>
-                        <div className="p-4 border border-border/30 rounded-lg bg-gradient-glow">
+                            </div>
+                          )}
                                                   <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                              <span className="text-white font-bold text-sm">🏦</span>
+                              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">PP</span>
                             </div>
                             <div>
-                              <h4 className="font-orbitron font-semibold">Withdraw Funds</h4>
-                              <p className="text-xs text-muted-foreground">Multi-gateway payout system</p>
+                                <h4 className="font-orbitron font-semibold">Withdraw via PayPal</h4>
+                                <p className="text-xs text-muted-foreground">Instant PayPal withdrawals</p>
                             </div>
                           </div>
                         
@@ -1389,6 +1422,7 @@ export default function Profile() {
                             step="0.01"
                             value={withdrawalAmount}
                             onChange={(e) => setWithdrawalAmount(e.target.value)}
+                                disabled={isWithdrawing}
                           />
                           
                           <Input
@@ -1397,32 +1431,137 @@ export default function Profile() {
                             className="bg-secondary/30 border-border/50"
                             value={paypalEmail}
                             onChange={(e) => setPaypalEmail(e.target.value)}
+                            disabled={isWithdrawing}
                           />
                           <p className="text-xs text-muted-foreground">
-                            Withdrawals will be sent to: {paypalEmail} (Sandbox testing email)
-                          </p>
-                          
-                          {/* Withdrawal Method Selection */}
-                          <div className="space-y-2">
-                            <Label htmlFor="withdrawal-method" className="text-sm font-medium">
-                              Withdrawal Method
-                            </Label>
-                            <Select
-                              value={withdrawalMethod}
-                              onValueChange={setWithdrawalMethod}
-                            >
-                              <SelectTrigger className="bg-secondary/30 border-border/50">
-                                <SelectValue placeholder="Select withdrawal method" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="paypal">PayPal (Instant)</SelectItem>
-                                <SelectItem value="stripe">Stripe (Bank Transfer)</SelectItem>
-                              </SelectContent>
-                            </Select>
+                                Withdrawals will be sent to: {paypalEmail || 'your PayPal email'}
+                              </p>
+                              
+                              <div className="text-xs text-muted-foreground bg-secondary/20 p-3 rounded-lg">
+                                <p className="font-semibold mb-2">PayPal Withdrawal Requirements:</p>
+                                <ul className="space-y-1">
+                                  <li>• Valid PayPal email address</li>
+                                  <li>• Minimum withdrawal: $10.00</li>
+                                  <li>• Instant processing</li>
+                                </ul>
+                              </div>
+
+                              <Button 
+                                className="w-full bg-blue-600 hover:bg-blue-700 hover:shadow-neon-blue transition-all duration-300"
+                                onClick={async () => {
+                                  // Validate withdrawal amount
+                                  if (!withdrawalAmount || parseFloat(withdrawalAmount) < 10) {
+                                    alert('Minimum withdrawal amount is $10.00');
+                                    return;
+                                  }
+                                  
+                                  // Validate PayPal email
+                                  if (!paypalEmail || !paypalEmail.includes('@')) {
+                                    alert('Please enter a valid PayPal email address');
+                                    return;
+                                  }
+                                  
+                                  setIsWithdrawing(true);
+                                  setWithdrawalType('paypal');
+                                  
+                                  try {
+                                    // Use the new withdrawal endpoint
+                                    const response = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                                        'Content-Type': 'application/json'
+                                      },
+                                      body: JSON.stringify({
+                                        amount: parseFloat(withdrawalAmount),
+                                        description: `PayPal withdrawal of $${withdrawalAmount}`,
+                                        preferredPayoutMethod: 'paypal',
+                                        payoutEmail: paypalEmail
+                                      })
+                                    });
+                                    
+                                    const data = await response.json();
+                                    if (response.ok && data.success) {
+                                      await fetchWalletBalance(); // Refresh balance
+                                      await fetchTransactions(); // Refresh transactions
+                                      await fetchTransactionStats(); // Refresh stats
+                                      
+                                      toast({
+                                        title: "Success",
+                                        description: `PayPal withdrawal of $${withdrawalAmount} initiated successfully`,
+                                      });
+                                      
+                                      setWithdrawalAmount('');
+                                    } else {
+                                      if (data.error && data.error.message) {
+                                        throw new Error(data.error.message);
+                                      } else if (data.message) {
+                                        throw new Error(data.message);
+                                      } else {
+                                        throw new Error(`Withdrawal failed: ${response.status} ${response.statusText}`);
+                                      }
+                                    }
+                                  } catch (error: any) {
+                                    console.error('PayPal withdrawal error:', error);
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to process PayPal withdrawal",
+                                      variant: "destructive",
+                                    });
+                                  } finally {
+                                    setIsWithdrawing(false);
+                                    setWithdrawalType('');
+                                  }
+                                }}
+                                disabled={walletBalance < 10 || isWithdrawing}
+                              >
+                                {isWithdrawing && withdrawalType === 'paypal' ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Processing PayPal Withdrawal...
+                                  </>
+                                ) : walletBalance < 10 ? 'Minimum $10 required' : 'Withdraw via PayPal'}
+                              </Button>
                           </div>
-                          
-                          {/* Bank Account Details for Stripe */}
-                          {withdrawalMethod === 'stripe' && (
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="bank" className="space-y-4 mt-6">
+                          <div className={`p-4 border border-border/30 rounded-lg bg-gradient-glow relative ${isWithdrawing && withdrawalType === 'stripe' ? 'opacity-75' : ''}`}>
+                            {isWithdrawing && withdrawalType === 'stripe' && (
+                              <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-10">
+                                <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-lg">
+                                  <div className="flex items-center gap-3">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                                    <span className="font-semibold">Processing Bank Withdrawal...</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">🏦</span>
+                              </div>
+                              <div>
+                                <h4 className="font-orbitron font-semibold">Withdraw via Bank Cards</h4>
+                                <p className="text-xs text-muted-foreground">Bank transfer via Stripe</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <Input
+                                type="number"
+                                placeholder="Amount ($)"
+                                className="bg-secondary/30 border-border/50"
+                                min="1"
+                                max={walletBalance}
+                                step="0.01"
+                                value={withdrawalAmount}
+                                onChange={(e) => setWithdrawalAmount(e.target.value)}
+                                disabled={isWithdrawing}
+                              />
+                              
+                              {/* Bank Account Details */}
                             <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border border-border/30">
                               <h4 className="font-semibold text-sm">Bank Account Details</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1437,6 +1576,7 @@ export default function Profile() {
                                     className="bg-secondary/30 border-border/50 text-sm"
                                     value={bankAccountHolder}
                                     onChange={(e) => setBankAccountHolder(e.target.value)}
+                                    disabled={isWithdrawing}
                                   />
                                 </div>
                                 <div className="space-y-1">
@@ -1450,6 +1590,7 @@ export default function Profile() {
                                     className="bg-secondary/30 border-border/50 text-sm"
                                     value={bankRoutingNumber}
                                     onChange={(e) => setBankRoutingNumber(e.target.value)}
+                                    disabled={isWithdrawing}
                                   />
                                 </div>
                                 <div className="space-y-1 md:col-span-2">
@@ -1463,6 +1604,7 @@ export default function Profile() {
                                     className="bg-secondary/30 border-border/50 text-sm"
                                     value={bankAccountNumber}
                                     onChange={(e) => setBankAccountNumber(e.target.value)}
+                                    disabled={isWithdrawing}
                                   />
                                 </div>
                               </div>
@@ -1470,53 +1612,30 @@ export default function Profile() {
                                 Your bank details are encrypted and securely stored for processing withdrawals.
                               </p>
                             </div>
-                          )}
                           
                           <div className="text-xs text-muted-foreground bg-secondary/20 p-3 rounded-lg">
-                            <p className="font-semibold mb-2">Withdrawal Requirements:</p>
+                                <p className="font-semibold mb-2">Bank Withdrawal Requirements:</p>
                             <ul className="space-y-1">
-                              <li>• Account verification (KYC)</li>
-                              <li>• Payment method setup</li>
-                              <li>• Tax information if required</li>
+                                  <li>• Complete bank account details</li>
+                                  <li>• Valid routing number (9 digits)</li>
                               <li>• Minimum withdrawal: $10.00</li>
+                                  <li>• Processing time: 2-7 business days (via Stripe)</li>
+                                  <li>• Funds deducted immediately from wallet</li>
                             </ul>
                           </div>
 
                           <Button 
                             className="w-full bg-green-600 hover:bg-green-700 hover:shadow-neon-green transition-all duration-300"
                             onClick={async () => {
-                              // TEMP: On click, fetch PayPal platform balance and show in alert
-                              try {
-                                const resp = await fetch(`${API_BASE_URL}/wallet/business-balance`, {
-                                  method: 'GET',
-                                  headers: {
-                                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                                  }
-                                });
-                                const data = await resp.json();
-                                if (resp.ok && data.success) {
-                                  // Business balance API response
-                                  const balance = data.data.balance;
-                                  const currency = data.data.currency || 'CAD';
-                                  const transactionCount = data.data.transactionCount || 0;
-                                  
-                                  alert(`Business Wallet Balance: ${currency} ${balance.toFixed(2)}\nTransactions: ${transactionCount}`);
-                                } else {
-                                  alert(data?.message || data?.error || 'Failed to fetch business balance');
-                                }
-                              } catch (e: any) {
-                                alert(`Failed to fetch PayPal balance: ${e?.message || e}`);
-                              }
                               // Validate withdrawal amount
                               if (!withdrawalAmount || parseFloat(withdrawalAmount) < 10) {
                                 alert('Minimum withdrawal amount is $10.00');
                                 return;
                               }
                               
-                              // Validate bank details for Stripe withdrawals
-                              if (withdrawalMethod === 'stripe') {
+                                  // Validate bank details
                                 if (!bankAccountHolder || !bankRoutingNumber || !bankAccountNumber) {
-                                  alert('Please fill in all bank account details for Stripe withdrawal');
+                                    alert('Please fill in all bank account details');
                                   return;
                                 }
                                 
@@ -1529,15 +1648,9 @@ export default function Profile() {
                                   alert('Account number must be at least 4 digits');
                                   return;
                                 }
-                              }
-                              
-                              // Validate PayPal email for PayPal withdrawals
-                              if (withdrawalMethod === 'paypal') {
-                                if (!paypalEmail || !paypalEmail.includes('@')) {
-                                  alert('Please enter a valid PayPal email address');
-                                  return;
-                                }
-                              }
+                                
+                                setIsWithdrawing(true);
+                                setWithdrawalType('stripe');
                               
                               try {
                                 // Use the new withdrawal endpoint
@@ -1549,14 +1662,13 @@ export default function Profile() {
                                   },
                                   body: JSON.stringify({
                                     amount: parseFloat(withdrawalAmount),
-                                    description: `Withdrawal of $${withdrawalAmount}`,
-                                    preferredPayoutMethod: withdrawalMethod,
-                                    payoutEmail: paypalEmail,
-                                    bankDetails: withdrawalMethod === 'stripe' ? {
+                                        description: `Bank withdrawal of $${withdrawalAmount}`,
+                                        preferredPayoutMethod: 'stripe',
+                                        bankDetails: {
                                       accountHolderName: bankAccountHolder,
                                       routingNumber: bankRoutingNumber,
                                       accountNumber: bankAccountNumber
-                                    } : undefined
+                                        }
                                   })
                                 });
                                 
@@ -1566,33 +1678,32 @@ export default function Profile() {
                                   await fetchTransactions(); // Refresh transactions
                                   await fetchTransactionStats(); // Refresh stats
                                   
-                                  // Show success message with Stripe transfer details if available
-                                  if (withdrawalMethod === 'stripe' && data.data?.stripeTransferId) {
+                                      // Show success message with Stripe payout details if available
+                                      if (data.data?.stripePayoutId) {
                                     toast({
                                       title: "Success",
-                                      description: `Stripe withdrawal of $${withdrawalAmount} processed successfully! Transfer ID: ${data.data.stripeTransferId}. Check your Stripe dashboard for real-time updates.`,
+                                          description: `Bank withdrawal of $${withdrawalAmount} processed successfully! Payout ID: ${data.data.stripePayoutId}. Money will arrive in 2-7 business days.`,
                                     });
-                                  } else if (withdrawalMethod === 'stripe') {
+                                      } else if (data.data?.stripeTransferId) {
+                                        // Fallback for old transfer format
                                     toast({
                                       title: "Success",
-                                      description: `Stripe withdrawal of $${withdrawalAmount} submitted for processing. Bank transfer will be processed within 2-5 business days.`,
+                                          description: `Bank withdrawal of $${withdrawalAmount} processed successfully! Transfer ID: ${data.data.stripeTransferId}. Check your Stripe dashboard for real-time updates.`,
                                     });
                                   } else {
                                     toast({
                                       title: "Success",
-                                      description: `PayPal withdrawal of $${withdrawalAmount} initiated successfully`,
+                                          description: `Bank withdrawal of $${withdrawalAmount} submitted for processing. Bank transfer will be processed within 2-5 business days.`,
                                     });
                                   }
                                   
                                   setWithdrawalAmount('');
-                                  // Clear bank details for Stripe
-                                  if (withdrawalMethod === 'stripe') {
+                                      // Clear bank details
                                     setBankAccountHolder('');
                                     setBankRoutingNumber('');
                                     setBankAccountNumber('');
-                                  }
                                 } else {
-                                  // Handle HTTP error responses (like 400 for Stripe Connect failures)
+                                      // Handle HTTP error responses
                                   if (data.error && data.error.message) {
                                     throw new Error(data.error.message);
                                   } else if (data.message) {
@@ -1602,10 +1713,10 @@ export default function Profile() {
                                   }
                                 }
                               } catch (error: any) {
-                                console.error('Withdrawal error:', error);
+                                    console.error('Bank withdrawal error:', error);
                                 
                                 // Show specific error message for Stripe Connect failures
-                                if (withdrawalMethod === 'stripe' && error.message) {
+                                    if (error.message) {
                                   if (error.message.includes('Stripe Connect transfer failed')) {
                                     toast({
                                       title: "Stripe Connect Failed",
@@ -1628,18 +1739,28 @@ export default function Profile() {
                                 } else {
                                   toast({
                                     title: "Error",
-                                    description: "Failed to process withdrawal",
+                                        description: "Failed to process bank withdrawal",
                                     variant: "destructive",
                                   });
                                 }
+                              } finally {
+                                setIsWithdrawing(false);
+                                setWithdrawalType('');
                               }
                             }}
-                            disabled={walletBalance < 10}
+                            disabled={walletBalance < 10 || isWithdrawing}
                           >
-                            {walletBalance < 10 ? 'Minimum $10 required' : `Withdraw via ${withdrawalMethod === 'paypal' ? 'PayPal' : 'Stripe'}`}
+                                {isWithdrawing && withdrawalType === 'stripe' ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Processing Bank Withdrawal...
+                                  </>
+                                ) : walletBalance < 10 ? 'Minimum $10 required' : 'Withdraw via Bank Transfer'}
                           </Button>
                         </div>
                       </div>
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
                 </div>
