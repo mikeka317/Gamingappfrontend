@@ -8,6 +8,7 @@ import AdminGames from './admin/AdminGames';
 import AdminDisputes from './AdminDisputes';
 import AdminDashboard from './admin/AdminDashboard';
 import AdminTransactions from './admin/AdminTransactions';
+import TournamentTypes from './admin/TournamentTypes';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function AdminPortal() {
@@ -41,6 +42,7 @@ export default function AdminPortal() {
               <TabsTrigger value="disputes">Manage Disputes</TabsTrigger>
               <TabsTrigger value="games">Games Management</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
+              <TabsTrigger value="tournament-types">Tournament Types</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard">
@@ -57,6 +59,10 @@ export default function AdminPortal() {
 
             <TabsContent value="transactions">
               <AdminTransactions />
+            </TabsContent>
+
+            <TabsContent value="tournament-types">
+              <TournamentTypes />
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Lobby from "./pages/Lobby";
+import Tournament from "./pages/Tournament";
 import MyChallenges from "./pages/MyChallenges";
 import ChallengesForMe from "./pages/ChallengesForMe";
 import Transactions from "./pages/Transactions";
@@ -19,6 +20,7 @@ import AITest from "./pages/AITest";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPortal from "./pages/AdminPortal";
+import TournamentTypes from "./pages/admin/TournamentTypes";
 import { AdminRoute } from "@/components/AdminRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import TestRoute from "./pages/TestRoute";
@@ -45,6 +47,11 @@ const App = () => (
             <Route path="/lobby" element={
               <ProtectedRoute>
                 <Lobby />
+              </ProtectedRoute>
+            } />
+            <Route path="/tournament" element={
+              <ProtectedRoute>
+                <Tournament />
               </ProtectedRoute>
             } />
             <Route path="/my-challenges" element={
@@ -78,6 +85,11 @@ const App = () => (
             <Route path="/admin_portal_management_control" element={
               <AdminRoute>
                 <AdminPortal />
+              </AdminRoute>
+            } />
+            <Route path="/admin/tournament-types" element={
+              <AdminRoute>
+                <TournamentTypes />
               </AdminRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

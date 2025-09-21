@@ -11,6 +11,7 @@ import {
   LogOut,
   Target,
   Bot,
+  Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ interface SidebarProps {
 const sidebarItems = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Users, label: 'Lobby', path: '/lobby' },
+  { icon: Crown, label: 'Tournament', path: '/tournament' },
   { icon: Trophy, label: 'My Challenges', path: '/my-challenges' },
   { icon: Target, label: 'Challenges For Me', path: '/challenges-for-me' },
   { icon: CreditCard, label: 'Transactions', path: '/transactions' },

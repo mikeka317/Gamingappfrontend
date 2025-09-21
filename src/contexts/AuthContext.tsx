@@ -4,6 +4,7 @@ import { User } from '@/types/user';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebaseClient';
 import {API_BASE_URL} from '@/services/api';
+import notificationService from '@/services/notificationService';
 
 interface AuthContextType {
   user: User | null;
@@ -79,6 +80,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('refreshToken', refreshToken);
         setUser(user as User);
+        
+        // Initialize push notifications after successful login (optional)
+        try {
+          if (notificationService.isSupported()) {
+            await notificationService.initialize();
+          } else {
+            console.log('Push notifications not supported in this browser');
+          }
+        } catch (notificationError) {
+          console.warn('Failed to initialize notifications:', notificationError);
+          // Don't fail login if notifications fail
+        }
       } else {
         throw new Error(response.message || 'Login failed');
       }
